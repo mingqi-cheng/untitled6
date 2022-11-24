@@ -36,11 +36,18 @@ export default {
     const gedan = ref({});
     const songs = ref([]);
     const store = useStore();
+    if(store.state.jishu==0){
+      store.state.jishu=-1
+    }
+ 
     function bofang(e){
+
       store.state.songslist=[]
      songs.value.filter(res=>{
       store.state.songslist.push(res.id)
      })
+ 
+     
       store.state.jishu= store.state.songslist.indexOf(e.id)   
     }
     API({

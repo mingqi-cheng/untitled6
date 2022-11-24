@@ -6,7 +6,7 @@ import axios from 'axios'
 
 const API = axios.create({
 baseURL:"http://chengmingqi.cn:3000",      //请求后端数据的基本地址，自定义
-timeout: 3000                   //请求超时设置，单位ms
+timeout: 5000                   //请求超时设置，单位ms
 })
 
 //导出我们建立的axios实例模块，ES6 export用法

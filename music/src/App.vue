@@ -2,6 +2,7 @@
   <div>
     <div>
       <el-menu class="el-menu-demo" mode="horizontal">
+  
         <el-menu-item index="1">LOGO</el-menu-item>
 
         <router-link to="/">
@@ -21,12 +22,16 @@
     <div>
       <div class="dibu">
         <div class="xinxi">
-          <img
+          <div  @click.native="xiangqin(music.id)">
+            <img
             class="music-disk-picture"
-            :class="{'music-disk-playing-style': !biaozhi.a}"
+            :class="{'music-disk-playing-style': ! store.state.bofang}"
+           
             :src="url"
-            alt
+            
           />
+          </div>
+       
           <div class="geming">{{music.name}}</div>
           <div class="geshou">{{music.ar}}</div>
         </div>
@@ -61,7 +66,7 @@
             <svg
               t="1668855558863"
               class="icon"
-              v-if="biaozhi.a"
+              v-if=" store.state.bofang"
               @click="bofang"
               viewBox="0 0 1024 1024"
               version="1.1"
@@ -174,7 +179,9 @@
           </div>
         </div>
       </div>
-
+      <div>
+       
+      </div>
       <audio ref="musicAudio" preload="auto" @canplay="changeDuration">
         <source ref="musicSource" type="audio/mpeg" />
       </audio>
@@ -190,6 +197,7 @@ import { useRouter } from "vue-router";
 
 export default {
   setup() {
+    
     //实现音乐播放的标签
     const musicSource = ref(null);
     //现在的播放时间
@@ -216,14 +224,17 @@ export default {
     const biaozhi = reactive({
       a: true
     });
- 
+    const show = ref(false);
+    const showPopup = () => {
+      show.value = true;
+    };
     const changeMusic = (aa) => {
       
       API({
           
           url: "/song/detail?ids=" + aa
         }).then(res => {
-          
+          if(res.data.code==200){
           music.value = res.data.songs;
           url.value = res.data.songs[0].al.picUrl;
           music.value.filter(res=>{
@@ -241,14 +252,16 @@ export default {
             music.value=music.value[0]
       
           
-       
+        }
          
         });
         API({
           url: "/song/url/v1?id=" + aa + "&level=exhigh",
           method: "GET"
         }).then(res => {
-          musicSource.value.src = res.data.data[0].url;
+          if(res.data.code==200){
+            musicSource.value.src = res.data.data[0].url;
+      
           musicAudio.value.load();
 
           playTime.value = musicAudio.value.currentTime;
@@ -257,7 +270,9 @@ export default {
 
           musicAudio.value.play();
 
-          biaozhi.a = false;
+          store.state.bofang = false;
+          }
+         
         });
        
     }
@@ -265,7 +280,7 @@ export default {
       () => store.state.musicId,
       aa => {
       list.value=list.value.filter(res=>res!=aa)
-      musicCursor.value=store.state.songslist.length
+      store.state.jishue=store.state.songslist.length
       store.state.songslist.push(aa)
       
         changeMusic(aa)
@@ -273,22 +288,21 @@ export default {
       }
     );
     watch(()=>store.state.jishu,aa=>{
-      musicCursor.value=aa
-      changeMusic(store.state.songslist[musicCursor.value])
+      store.state.jishu
+      changeMusic(store.state.songslist[store.state.jishu])
     })
     const nextButtonClick = () => {
         if(store.state.songslist.length==0){
           return
         }
-      if(musicCursor.value==store.state.songslist.length-1){
-        musicCursor.value=0
+      if(store.state.jishu==store.state.songslist.length-1){
+        store.state.jishu=0
       }else{
-        musicCursor.value += 1
+        store.state.jishu += 1
       }
-      console.log(musicCursor.value);
-    
-    
-      changeMusic(store.state.songslist[musicCursor.value])
+      
+     
+      changeMusic(store.state.songslist[store.state.jishu])
    
    
     };
@@ -297,12 +311,13 @@ export default {
           return
         }
    
-      if(musicCursor.value==0){
-        musicCursor.value=store.state.songslist.length-1
+      if(store.state.jishu==0){
+        store.state.jishu=store.state.songslist.length-1
       }else{
-        musicCursor.value -= 1
+        store.state.jishu -= 1
       }
-      changeMusic(store.state.songslist[musicCursor.value])
+  
+      changeMusic(store.state.songslist[store.state.jishu])
     
     
     };
@@ -316,15 +331,34 @@ export default {
         playDuration.value = musicAudio.value.duration;
       }
     };
+    function xiangqin(id){
+      if(id==null){
+        return
+      }
+      router.push({
+        name:'test',
+        query:{
+          id:id
+        }
+      })
+    }
     const updatePlayTimePerSecond = () => {
+  
+      if(musicAudio.value.currentTime){
+        
+        store.state.shijain= musicAudio.value.currentTime
+       
+      }
+
       if(playDuration.value==0){
         return
       }
-      if (!biaozhi.a) {
+      if (!store.state.bofang) {
         playTime.value += 1;
 
         if (playTime.value >= playDuration.value) {
           nextButtonClick()
+          playTime.value=0
         }
       }
     };
@@ -340,11 +374,13 @@ export default {
       if(playDuration.value==0){
         return
       }
-      if (biaozhi.a == false) {
-        biaozhi.a = true;
+      if ( store.state.bofang == false) {
+        clearInterval(jishiqi.timeInter)
+        store.state.bofang = true;
         musicAudio.value.pause();
       } else {
-        biaozhi.a = false;
+        update()
+        store.state.bofang = false;
         musicAudio.value.play();
       }
       playTime.value = musicAudio.value.currentTime;
@@ -358,8 +394,19 @@ export default {
 
       return strMinute + ":" + strSecond;
     };
+
+      const jishiqi=reactive({
+        timeInter:null
+      })
+
+      const update=()=>{
+
+        jishiqi.timeInter=setInterval(updatePlayTimePerSecond, 1000);
+      }
+    
+   
     onMounted(() => {
-      setInterval(updatePlayTimePerSecond, 1000);
+      update()
     });
     const voiceButtonClick = () => {
       voiceMute.value = !voiceMute.value;
@@ -394,6 +441,7 @@ export default {
       playDuration,
       tableData,
       sousuo,
+      store,
       nextButtonClick,
       url,
       music,
@@ -411,7 +459,10 @@ export default {
       lastButtonClick,
       list,
       musicCursor,
-      bofang
+      bofang,
+      show,
+      showPopup,
+      xiangqin
     };
   },
   components: {
@@ -458,6 +509,7 @@ export default {
   top: 10px;
   left: calc(100% +25%);
   width: 50%;
+  overflow: hidden;
 }
 .voice-container {
   display: inline-block;
@@ -495,6 +547,11 @@ export default {
   pointer-events: none;
   border-radius: 50%;
   border: 1px solid black;
+  -moz-user-select: none; 
+  -webkit-user-select: none; 
+  -ms-user-select: none; 
+  -khtml-user-select: none; 
+user-select: none;
 }
 
 .music-disk-playing-style {

@@ -17,6 +17,11 @@ import { createRouter, createWebHistory } from 'vue-router';
 		path:'/songlist',
 		name:"songlist",
 		component:()=>import("../components/songlist.vue")
+	  },
+	  {
+		path:'/test',
+		name:"test",
+		component:()=>import("../components/aPlayer.vue")
 	  }
 	 
 	]

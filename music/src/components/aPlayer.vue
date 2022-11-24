@@ -1,173 +1,278 @@
 <template>
-  <div class="mainPage" ref="playerRef"></div>
+  <div class="dayemian">
+    <div class="cipan">
+      <img
+        src="../static/needle-ab.png"
+        class="img_cz"
+        :class="{ img_cz_active: !store.state.bofang}"
+        alt
+      />
+      <img src="../static/d7e4e3a244701ee85fecb5d4f6b5bd57.png" class="img_cp" alt />
+      <img
+        :src="url"
+        class="img_dt"
+        :class="!store.state.bofang ? 'img_dt_active' : 'img_dt_paused'"
+        alt
+      />
+    </div>
+
+    <div class="geming1">{{music.name}}</div>
+    <div class="geshou1">歌手：{{music.ar}}</div>
+    <div class="geci">
+      <div class="content" ref="musicLyric">
+        <p
+          v-for="(i,index) in arr"
+          :key="index"
+          :class="{active:(currentime*1000>=i.time&&currentime*1000<i.per)}"
+        >{{i.lrc}}</p>
+      </div>
+    </div>
+  </div>
 </template>
-   
-  <script setup>
-import APlayer from "APlayer";
-import "APlayer/dist/APlayer.min.css";
-import {
-  reactive,
-  nextTick,
-  onBeforeUnmount,
-  getCurrentInstance,
-  onMounted,
-  ref
-} from "vue";
+<script>
+import API from "../plugins/axiosInstance.js";
+import { onMounted, nextTick, reactive, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 
-const playerRef = ref();
-const { proxy } = getCurrentInstance();
-const state = reactive({
-  instance: null
-});
+import { useStore } from "vuex";
+import { isNumber } from "lodash";
+export default {
+  setup() {
+    const route = useRoute();
+    const zanting = ref(false);
+    const music = ref({});
+    const store = useStore();
+    const url = ref();
+    const arr = ref();
+    const gaodu = ref();
+    const currentime = ref();
+    const musicLyric = ref();
+    watch(
+      () => store.state.shijain,
+      aa => {
+        let p=document.querySelector('p.active')
+        if(p){
+         
+       if( p.offsetTop>200){
+        musicLyric.value.scrollTop=p.offsetTop-200
+       }
+        }
+       
+        currentime.value = aa;
+        
+      }
+    );
 
-// APlayer歌曲信息
-class Audio {
-  // 音频艺术家
-  // artist: String;
-  // 音频名称
-  // name: String;
-  // 音频链接
-  // url: String;
-  // 音频封面
-  // cover: String;
-  // 歌词
-  // lrc: String;
+ 
+    ss(route.query.id);
 
-  constructor(artist, name, url, cover, lrc) {
-    this.artist = artist;
-    this.name = name;
-    this.url = url;
-    this.cover = cover;
-    this.lrc = lrc;
+    function aa() {
+      store.state.bofang = !store.state.bofang;
+    }
+    watch(
+      () => store.state.jishu,
+      aa => {
+        ss(store.state.songslist[aa]);
+      }
+    );
+  
+
+    watch(
+      () => route.query.id,
+      aa => {
+        ss(aa);
+      }
+    );
+    async function ss(id) {
+      await API({
+        url: "/song/detail?ids=" + id
+      }).then(res => {
+        if (res.data.code == 200) {
+          music.value = res.data.songs;
+          url.value = res.data.songs[0].al.picUrl;
+          music.value.filter(res => {
+            let b = "";
+            for (let i = 0; i < res.ar.length; i++) {
+              if (i == res.ar.length - 1) {
+                b += res.ar[i].name;
+              } else {
+                b += res.ar[i].name + "/";
+              }
+            }
+            res.ar = b;
+          });
+          music.value = music.value[0];
+        }
+      });
+      await API({
+        url: "/lyric?id=" + id
+      }).then(res => {
+        arr.value = res.data.lrc.lyric.split(/[\r\n]+/).map((item, i) => {
+          let min = item.slice(1, 3);
+          let sec = item.slice(4, 6);
+          let mill = item.slice(7, 10);
+          let time =
+            parseInt(min) * 60 * 1000 + parseInt(sec) * 1000 + parseInt(mill);
+          let lrc = item.slice(11, item.length);
+          if (isNaN(Number(mill))) {
+            mill = item.slice(7, 9);
+            lrc = item.slice(10, item.length);
+            time =
+              parseInt(min) * 60 * 1000 + parseInt(sec) * 1000 + parseInt(mill);
+          }
+
+          return { min, sec, time, mill, lrc };
+        });
+
+        arr.value.forEach((item, i) => {
+          if (i == arr.value.length - 1) {
+            item.per = 0;
+          } else {
+            item.per = arr.value[i + 1].time;
+          }
+        });
+       
+      });
+    }
+  
+    return {
+      musicLyric,
+      store,
+      url,
+      aa,
+      currentime,
+      music,
+      arr,
+      zanting,
+      gaodu
+    };
   }
+};
+</script> 
+<style lang="less" scoped>
+.dayemian {
+  width: 80%;
+  margin: 0 auto;
+  box-shadow: 0 0 5px #d2d2d2;
+  height: 100%;
 }
 
-const props = defineProps({
-  // 开启吸底模式
-  fixed: {
-    type: Boolean,
-    default: false
-  },
-  // 开启迷你模式
-  mini: {
-    type: Boolean,
-    default: false
-  },
-  // 音频自动播放
-  autoplay: {
-    type: Boolean,
-    default: false
-  },
-  // 主题色
-  theme: {
-    type: String,
-    default: "rgba(255,255,255,0.2)"
-  },
-  // 音频循环播放
-  loop: {
-    type: String,
-    default: "all" //'all' | 'one' | 'none'
-  },
-  // 音频循环顺序
-  order: {
-    type: String,
-    default: "random" //'list' | 'random'
-  },
-  // 预加载
-  preload: {
-    type: String,
-    default: "auto" //'auto' | 'metadata' | 'none'
-  },
-  // 默认音量
-  volume: {
-    type: Number,
-    default: 0.7,
-    validator: value => {
-      return value >= 0 && value <= 1;
-    }
-  },
-  // 歌曲服务器(netease-网易云, tencent-qq音乐, kugou-酷狗, xiami-小米音乐, baidu-百度音乐)
-  songServer: {
-    type: String,
-    default: "netease" //'netease' | 'tencent' | 'kugou' | 'xiami' | 'baidu'
-  },
-  // 播放类型(song-歌曲, playlist-播放列表, album-专辑, search-搜索, artist-艺术家)
-  songType: {
-    type: String,
-    default: "playlist"
-  },
-  // 歌的id
-  songId: {
-    type: String,
-    default: "19723756"
-  },
-  // 互斥，阻止多个播放器同时播放，当前播放器播放时暂停其他播放器
-  mutex: {
-    type: Boolean,
-    default: true
-  },
-  // 传递歌词方式
-  lrcType: {
-    type: Number,
-    default: 3
-  },
-  // 列表是否默认折叠
-  listFolded: {
-    type: Boolean,
-    default: true
-  },
-  // 列表最大高度
-  listMaxHeight: {
-    type: String,
-    default: "100px"
-  },
-  // 存储播放器设置的 localStorage key
-  storageName: {
-    type: String,
-    default: "aplayer-setting"
+.cipan {
+  display: flex;
+  width: 35%;
+  height: 450px;
+  position: absolute;
+  left: 10%;
+}
+.img_cz {
+  width: 90px;
+  height: 120px;
+  position: relative;
+  left: 380px;
+  top: 40px;
+  z-index: 1011;
+  transform-origin: 0 0;
+  transform: rotate(-30deg);
+  transition: all 2s;
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  -khtml-user-select: none;
+  user-select: none;
+}
+.img_cz_active {
+  width: 90px;
+  height: 120px;
+  transform-origin: 0 0;
+  transform: rotate(0deg);
+  transition: all 2s;
+}
+.img_cp {
+  z-index: 99;
+  position: relative;
+  left: 150px;
+  top: 100px;
+  width: 300px;
+  height: 300px;
+
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  -khtml-user-select: none;
+  user-select: none;
+}
+.img_dt {
+  position: relative;
+  right: 100px;
+  top: 150px;
+  width: 210px;
+  height: 210px;
+  border-radius: 50%;
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  -khtml-user-select: none;
+  user-select: none;
+  animation: rotate_dt 10s linear infinite;
+}
+.img_dt_active {
+  animation-play-state: running;
+}
+.img_dt_paused {
+  animation-play-state: paused;
+}
+@keyframes rotate_dt {
+  0% {
+    transform: rotateZ(0deg);
   }
-});
-onMounted(() => {
-  let str = {
-    server: props.songServer,
-    type: props.songType,
-    id: props.songId
-  };
-  proxy.$api.common.getSongSheet(str).then(res => {
-    let audioList = res.data.map(
-      value =>
-        new Audio(value.author, value.title, value.url, value.pic, value.lrc)
-    );
-    state.instance = new APlayer({
-      container: playerRef.value,
-      fixed: props.fixed,
-      mini: props.mini,
-      autoplay: props.autoplay,
-      theme: props.theme,
-      loop: props.loop,
-      order: props.order,
-      preload: props.preload,
-      volume: props.volume,
-      mutex: props.mutex,
-      lrcType: props.lrcType,
-      listFolded: props.listFolded,
-      listMaxHeight: props.listMaxHeight,
-      storageName: props.storageName,
-      audio: audioList
-    });
-  });
-  // 销毁
-  onBeforeUnmount(() => {
-    state.instance.destroy();
-  });
-});
-</script>
-   
-  <style  scoped>
-.mainPage {
-  @include wh(100%, auto);
-  background: #fcfcfc;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
+  100% {
+    transform: rotateZ(360deg);
+  }
+}
+.geming1 {
+  margin-top: 20px;
+  width: 200px;
+  text-align: center;
+  position: relative;
+  left: 65%;
+  top: 0px;
+  font-size: 30px;
+}
+.geshou1 {
+  margin-top: 20px;
+  width: 200px;
+  text-align: center;
+  position: relative;
+  left: 65%;
+  top: 0px;
+  margin-top: 0px;
+  font-size: 14px;
+}
+.geci {
+  margin-top: 50px;
+  left: 22%;
+  top: 0px;
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+}
+.content::-webkit-scrollbar{
+  
+display: none;
+}
+.content {
+  width: 100%;
+  height: 500px;
+ 
+  overflow: scroll;
+
+  p {
+    color: #999;
+  }
+  .active {
+    color: rgb(23, 3, 3);
+    font-size: 30px;
+  }
+  line-height: 50px;
 }
 </style>

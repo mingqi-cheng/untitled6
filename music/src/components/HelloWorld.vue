@@ -54,7 +54,7 @@ export default {
           item.playCount = item.playCount + "万";
         } else if (item.playCount > 100000000) {
           Math.floor(item.playCount / 100000000);
-          item.playCount = item.playCount + "亿";
+          item.playCount =Math.floor( item.playCount/100000000) + "亿";
         }
         return item;
       });
@@ -73,10 +73,11 @@ export default {
   width: calc(25% - 40px);
   margin: 20px;
   box-sizing: border-box;
+  box-shadow: 0 0 5px #D2D2D2;
 }
 .imgs img {
   width: 100%;
-  height: 100%;
+
 }
 .songslist {
   display: flex;
@@ -84,12 +85,12 @@ export default {
   justify-content: space-around;
 }
 .playcount {
-  width: 50px;
+  width: 60px;
   text-align: center;
   position: relative;
   bottom: calc(100% - 20px);
   color: #d2d2d2;
-  left: calc(100% - 50px);
+  left: calc(100% - 60px);
 }
 .ziti {
   margin-top: 30px;

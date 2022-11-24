@@ -7,13 +7,16 @@ import axios from '../src/plugins/axiosInstance.js'
 import router from './router'
 import store from "./store"
 import  aplayer  from '@moefe/vue-aplayer'
- 
+
 
 const app=createApp(App)
+
 
 app.use(ElementPlus)
 app.use(router)
 app.use(aplayer)
+
 app.use(store)
 app.mount('#app')
+
 app.config.globalProperties.$axios=axios;
